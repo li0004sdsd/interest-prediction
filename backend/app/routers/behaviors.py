@@ -65,3 +65,44 @@ def delete_behavior(
         raise HTTPException(status_code=404, detail="Event not found")
     db.delete(event)
     db.commit()
+
+
+@router.post("/batch", response_model=List[schemas.BehaviorEventOut], status_code=status.HTTP_201_CREATED)
+def create_behaviors_batch(
+    payloads: List[schemas.BehaviorEventCreate],
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    events = []
+    try:
+        for idx, payload in enumerate(payloads):
+            action_lower = payload.action.lower()
+            category_lower = payload.category.lower()
+            if action_lower not in VALID_ACTIONS:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Item {idx}: action must be one of: {', '.join(sorted(VALID_ACTIONS))}"
+                )
+            if category_lower not in VALID_CATEGORIES:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Item {idx}: category must be one of: {', '.join(sorted(VALID_CATEGORIES))}"
+                )
+            events.append(models.BehaviorEvent(
+                user_id=current_user.id,
+                category=category_lower,
+                action=action_lower,
+                weight=payload.weight,
+            ))
+
+        db.add_all(events)
+        db.commit()
+        for event in events:
+            db.refresh(event)
+        return events
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception:
+        db.rollback()
+        raise
