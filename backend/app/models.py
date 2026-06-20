@@ -22,7 +22,7 @@ class BehaviorEvent(Base):
     __tablename__ = "behavior_events"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     category: Mapped[str] = mapped_column(String(50), nullable=False)
     action: Mapped[str] = mapped_column(String(50), nullable=False)
     weight: Mapped[float] = mapped_column(Float, default=1.0)

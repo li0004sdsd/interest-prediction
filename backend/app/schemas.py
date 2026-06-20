@@ -1,6 +1,8 @@
 from __future__ import annotations
 from datetime import datetime
-from typing import List
+from typing import Generic, List, TypeVar
+
+T = TypeVar("T")
 from pydantic import BaseModel, EmailStr
 
 
@@ -62,3 +64,10 @@ class PredictionResult(BaseModel):
     scores: List[CategoryScore]
     tags: List[InterestTag]
     total_events: int
+
+
+class PaginatedResponse(BaseModel, Generic[T]):
+    total: int
+    items: List[T]
+
+    model_config = {"from_attributes": True}
