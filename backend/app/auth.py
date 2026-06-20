@@ -1,3 +1,4 @@
+import os
 from datetime import datetime, timedelta
 from typing_extensions import Annotated
 from fastapi import Depends, HTTPException, status
@@ -5,12 +6,18 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
+from dotenv import load_dotenv
 from app.database import get_db
 from app import models
 
-SECRET_KEY = "8f3b2a1c9e4d7f6a0b5c2d8e1f4a7b3c9e2d5f8a1b4c7e0d3f6a9b2c5e8f1a4"
+load_dotenv()
+
+SECRET_KEY = os.getenv(
+    "SECRET_KEY",
+    "8f3b2a1c9e4d7f6a0b5c2d8e1f4a7b3c9e2d5f8a1b4c7e0d3f6a9b2c5e8f1a4",
+)
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")

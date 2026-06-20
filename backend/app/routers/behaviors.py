@@ -1,10 +1,11 @@
 from __future__ import annotations
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app import models, schemas
 from app.auth import get_current_user
+from app.limiter import limiter
 
 router = APIRouter(prefix="/behaviors", tags=["behaviors"])
 
@@ -43,7 +44,9 @@ def list_behaviors(
 
 
 @router.post("", response_model=schemas.BehaviorEventOut, status_code=status.HTTP_201_CREATED)
+@limiter.limit("30/minute")
 def create_behavior(
+    request: Request,
     payload: schemas.BehaviorEventCreate,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
@@ -87,7 +90,9 @@ def delete_behavior(
 
 
 @router.post("/batch", response_model=List[schemas.BehaviorEventOut], status_code=status.HTTP_201_CREATED)
+@limiter.limit("30/minute")
 def create_behaviors_batch(
+    request: Request,
     payloads: List[schemas.BehaviorEventCreate],
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),

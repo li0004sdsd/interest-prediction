@@ -1,10 +1,13 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from slowapi.errors import RateLimitExceeded
 from apscheduler.schedulers.background import BackgroundScheduler
 from app.database import engine, Base, SessionLocal
 from app.routers import auth, behaviors, predictions
 from app.services.snapshot import take_interest_snapshot
+from app.limiter import limiter
 
 Base.metadata.create_all(bind=engine)
 
@@ -37,6 +40,19 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+
+app.state.limiter = limiter
+
+
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
+    retry_after = int(exc.description.split()[-2]) if exc.description else 60
+    return JSONResponse(
+        status_code=429,
+        content={"detail": "Too many requests"},
+        headers={"Retry-After": str(retry_after)},
+    )
+
 
 app.add_middleware(
     CORSMiddleware,
