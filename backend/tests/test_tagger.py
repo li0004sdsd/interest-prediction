@@ -85,6 +85,19 @@ class TestGenerateTagsDefaultConfig:
         confidences = [t.confidence for t in tags]
         assert confidences == sorted(confidences, reverse=True)
 
+    def test_multiple_tags_sorted_strictly_descending(self):
+        events = [
+            make_event("purchase", "technology", weight=100.0),
+            make_event("search", "sports", weight=80.0),
+            make_event("view", "food", weight=30.0),
+            make_event("scroll", "travel", weight=10.0),
+        ]
+        tags = generate_tags(events)
+        confidences = [t.confidence for t in tags]
+        for i in range(len(confidences) - 1):
+            assert confidences[i] >= confidences[i + 1]
+        assert tags[0].confidence > tags[-1].confidence
+
     def test_below_low_threshold_no_tags(self):
         events = [
             make_event("scroll", "technology", weight=1.0),
@@ -98,6 +111,31 @@ class TestGenerateTagsDefaultConfig:
     def test_empty_events_returns_empty_tags(self):
         tags = generate_tags([])
         assert tags == []
+
+    def test_all_unknown_actions_still_generates_tags(self):
+        events = [
+            make_event("weird_action_1", "technology", weight=3.0),
+            make_event("weird_action_2", "sports", weight=2.0),
+            make_event("weird_action_3", "food", weight=1.0),
+        ]
+        tags = generate_tags(events)
+        assert len(tags) >= 1
+        for tag in tags:
+            assert 0.0 <= tag.confidence <= 1.0
+        confidences = [t.confidence for t in tags]
+        assert confidences == sorted(confidences, reverse=True)
+
+    def test_weight_zero_events_do_not_boost_tag(self):
+        events = [
+            make_event("purchase", "technology", weight=0.0),
+            make_event("view", "sports", weight=1.0),
+        ]
+        tags = generate_tags(events)
+        tech_tag = next((t for t in tags if "technology" in t.tag), None)
+        sports_tag = next((t for t in tags if "sports" in t.tag), None)
+        assert sports_tag is not None
+        if tech_tag is not None:
+            assert tech_tag.confidence <= sports_tag.confidence
 
 
 class TestGenerateTagsCustomConfig:

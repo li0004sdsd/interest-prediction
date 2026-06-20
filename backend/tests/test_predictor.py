@@ -124,6 +124,23 @@ class TestComputeScoresNormalBehavior:
         assert result["technology"] == pytest.approx(tech_raw / max_raw * 100, abs=0.01)
         assert result["sports"] == pytest.approx(sports_raw / max_raw * 100, abs=0.01)
 
+    def test_normalized_max_score_is_100(self):
+        events = [
+            make_event("purchase", "technology", weight=3.0),
+            make_event("view", "sports", weight=5.0),
+            make_event("click", "fashion", weight=2.0),
+            make_event("scroll", "food", weight=1.0),
+        ]
+        result = compute_scores(events)
+        assert len(result) == 4
+        assert max(result.values()) == 100.0
+        assert all(v <= 100.0 for v in result.values())
+
+    def test_single_category_always_scores_100(self):
+        events = [make_event("view", "technology", weight=1.0)]
+        result = compute_scores(events)
+        assert result == {"technology": 100.0}
+
     def test_action_case_insensitive(self):
         events = [
             make_event("PURCHASE", "technology", weight=1.0),
@@ -142,3 +159,25 @@ class TestComputeScoresNormalBehavior:
         for v in result.values():
             assert isinstance(v, float)
             assert round(v, 2) == v
+
+    def test_weight_zero_events_contribute_zero_to_raw_score(self):
+        events = [
+            make_event("purchase", "technology", weight=0.0),
+            make_event("purchase", "sports", weight=5.0),
+            make_event("view", "technology", weight=0.0),
+        ]
+        result = compute_scores(events)
+        assert result["technology"] == 0.0
+        assert result["sports"] == 100.0
+
+    def test_all_unknown_actions_use_default_multiplier_1_0(self):
+        events = [
+            make_event("unknown_a", "technology", weight=2.0),
+            make_event("unknown_b", "sports", weight=3.0),
+            make_event("unknown_c", "fashion", weight=1.0),
+        ]
+        result = compute_scores(events)
+        assert max(result.values()) == 100.0
+        assert result["technology"] == pytest.approx(2.0 / 3.0 * 100, abs=0.01)
+        assert result["sports"] == 100.0
+        assert result["fashion"] == pytest.approx(1.0 / 3.0 * 100, abs=0.01)
