@@ -28,7 +28,8 @@ def list_behaviors(
     # - 两者结合实现分页查询，避免一次性加载全部数据到内存
     # - 注意：OFFSET 较大时性能会下降，生产环境建议改用基于游标(cursor)的分页
     query = db.query(models.BehaviorEvent).filter(
-        models.BehaviorEvent.user_id == current_user.id
+        models.BehaviorEvent.user_id == current_user.id,
+        models.BehaviorEvent.is_deleted == False,
     )
     total = query.count()
     items = (
@@ -71,12 +72,17 @@ def delete_behavior(
 ):
     event = (
         db.query(models.BehaviorEvent)
-        .filter(models.BehaviorEvent.id == event_id, models.BehaviorEvent.user_id == current_user.id)
+        .filter(
+            models.BehaviorEvent.id == event_id,
+            models.BehaviorEvent.user_id == current_user.id,
+            models.BehaviorEvent.is_deleted == False,
+        )
+        .with_for_update()
         .first()
     )
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
-    db.delete(event)
+    event.is_deleted = True
     db.commit()
 
 

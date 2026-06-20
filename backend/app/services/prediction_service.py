@@ -9,7 +9,10 @@ def build_prediction_result(user_id: int, db: Session) -> schemas.PredictionResu
     user = db.query(models.User).filter(models.User.id == user_id).first()
     events = (
         db.query(models.BehaviorEvent)
-        .filter(models.BehaviorEvent.user_id == user_id)
+        .filter(
+            models.BehaviorEvent.user_id == user_id,
+            models.BehaviorEvent.is_deleted == False,
+        )
         .all()
     )
     scores_map = compute_scores(events)
