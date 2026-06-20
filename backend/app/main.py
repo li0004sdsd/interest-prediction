@@ -1,11 +1,42 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.database import engine, Base
+from apscheduler.schedulers.background import BackgroundScheduler
+from app.database import engine, Base, SessionLocal
 from app.routers import auth, behaviors, predictions
+from app.services.snapshot import take_interest_snapshot
 
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Interest Prediction API", version="1.0.0")
+
+def run_snapshot_job():
+    db = SessionLocal()
+    try:
+        take_interest_snapshot(db)
+    finally:
+        db.close()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(
+        run_snapshot_job,
+        "interval",
+        hours=1,
+        id="interest_snapshot",
+        replace_existing=True,
+    )
+    scheduler.start()
+    yield
+    scheduler.shutdown()
+
+
+app = FastAPI(
+    title="Interest Prediction API",
+    version="1.0.0",
+    lifespan=lifespan,
+)
 
 app.add_middleware(
     CORSMiddleware,
